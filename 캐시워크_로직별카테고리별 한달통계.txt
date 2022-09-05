@@ -1,0 +1,51 @@
+-- 로직별 카테고리별 한달통계
+SELECT VIS.*, RSS.nid
+FROM(
+     SELECT V.requestkey, V.rssoption,  V.newcategory, V.pcode
+           , CASE WHEN V.rssoption ='RECOM_RTI'   THEN '1_실시간이슈'
+                  WHEN V.rssoption ='RECOM_K_RTI' THEN '2_실시간이슈(열독률)'
+                  WHEN V.rssoption ='RECOM_FCC'   THEN '3_언론사&카테고리'
+                  WHEN V.rssoption ='RECOM_CRANK' THEN '4_카테고리별 인기'          
+                  WHEN V.rssoption ='RECOM_CTR'   THEN '5_CTR'       
+                  WHEN V.rssoption ='RECOM_EMOJI' THEN '6_댓글감정표현'    
+                  WHEN V.rssoption ='RECOM_RANK'  THEN '7_인기순'    
+                  WHEN V.rssoption ='RECOM_NMEDIA'THEN '8_뉴미디어'    
+                  WHEN V.rssoption ='RECOM_DATE'  THEN '9_날짜'  END AS LOGI_NAME
+           , CASE WHEN V.pcode ='CA01' THEN '1_뉴스'
+                  WHEN V.pcode ='CA02' THEN '2_생활문화'
+                  WHEN V.pcode ='CA03' THEN '3_연예'
+                  WHEN V.pcode ='CA04' THEN '4_스포츠'          
+                  WHEN V.pcode ='CA05' THEN '5_뉴미디어'       
+                  WHEN V.pcode ='CA06' THEN '6_동영상'    
+                  WHEN V.pcode ='CA09' THEN '7_금융'END AS CODE_NAME
+            , avg(visit) as visit, avg(user) as user
+     FROM (SELECT day, requestkey, rssoption, newcategory, substr(newcategory,1,4) as pcode, count(*) as visit, count(distinct pcid) as user
+           FROM   elasticsearch_parquet
+           WHERE  year = '2022'
+           AND  month = '08'
+           AND  day not in ('06','07','13','14','15','17','20','21','27','28') --주말제외
+           AND    type = 'VISIT'
+           AND    requestkey in ('G9BUz12T')
+           GROUP BY day, requestkey, rssoption, newcategory, substr(newcategory,1,4)
+           ) V
+      GROUP BY V.requestkey, V.rssoption,  V.newcategory, V.pcode
+      ORDER BY V.requestkey, V.rssoption,  V.newcategory, V.pcode
+      ) VIS,
+     (SELECT V.requestkey, V.rssoption, V.newcategory, V.pcode, avg(nid) as nid
+      FROM (SELECT day, requestkey, rssoption,  newcategory, substr(newcategory,1,4) as pcode, count(*) as nid
+            FROM   elasticsearch_parquet
+            WHERE  year = '2022'
+            AND  month = '08'
+            AND  day not in ('06','07','13','14','15','17','20','21','27','28') --주말제외
+            AND    type = 'RSS'
+            AND    requestkey in ('G9BUz12T')
+            GROUP BY day, requestkey, rssoption,  newcategory, substr(newcategory,1,4)
+           ) V
+        GROUP BY V.requestkey, V.rssoption, V.newcategory, V.pcode
+        ORDER BY V.requestkey, V.rssoption,  V.newcategory, V.pcode
+      ) RSS
+WHERE VIS.requestkey= RSS.requestkey
+AND   VIS.newcategory = RSS.newcategory
+AND   VIS.rssoption = RSS.rssoption
+AND   VIS.pcode = RSS.pcode
+ORDER BY VIS.requestkey, VIS.rssoption

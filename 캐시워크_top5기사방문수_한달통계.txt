@@ -1,0 +1,19 @@
+-- top5기사들의 방문수 평일 평균
+SELECT V2.requestkey, V2.rank, round(avg(visit),2)
+FROM 
+   (SELECT V.*
+         , RANK() over (partition by requestkey, day order by visit desc) as rank
+    FROM 
+       (SELECT requestkey,day, nid, count(*) as visit
+        FROM   elasticsearch_parquet
+        WHERE  year = '2022'
+          AND  month = '06'
+          AND  day not in ('01','04','05','06','11','12','18','19','25','26') --주말제외
+          AND  type = 'VISIT'
+          AND  requestkey in ('G9BUz12T', 'X4uGJ61p')
+        GROUP BY requestkey,day, nid
+        ) V
+    )V2
+WHERE V2.rank <=5
+GROUP BY V2.requestkey, V2.rank
+ORDER BY V2.requestkey, V2.rank
