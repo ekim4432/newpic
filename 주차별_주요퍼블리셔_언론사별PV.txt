@@ -1,0 +1,48 @@
+-- 주차별 주요퍼블리셔별 언론사별 페이지뷰
+SELECT requestkey, provider, providerno, count(*) as visit
+FROM   elasticsearch_parquet
+WHERE 1=1
+AND   CONCAT(year,'-',month,'-',day) >= to_char(date_trunc('week', now()- interval '7' day) ,'yyyy-mm-dd') --전주월요일
+AND   CONCAT(year,'-',month,'-',day) <= to_char(date_trunc('week', now()- interval '7' day) + interval '6' day ,'yyyy-mm-dd') --전주일요일
+AND  type = 'VISIT'
+AND  requestkey IN ('G9BUz12T','X4uGJ61p','k8rlD25H','q2EdR50I','F9fzY14o') 
+AND  providerno IN (88,488,214,291,82,179,480,326,466,139)
+GROUP BY requestkey, provider, providerno
+union all
+-- 주차별 파트너스 언론사별 페이지뷰
+SELECT V2.PAT as requestkey, V2.provider, V2.providerno, V2.visit
+FROM 
+   (SELECT V.*
+            ,CASE WHEN type = 'VISIT' THEN '1_partners' END AS PAT
+            , RANK() over (order by visit desc) as rank
+    FROM 
+       (SELECT provider, providerno, type, count(*) as visit
+        FROM   elasticsearch_parquet
+        WHERE 1=1
+        AND   CONCAT(year,'-',month,'-',day) >= to_char(date_trunc('week', now()- interval '7' day) ,'yyyy-mm-dd') --전주월요일
+        AND   CONCAT(year,'-',month,'-',day) <= to_char(date_trunc('week', now()- interval '7' day) + interval '6' day ,'yyyy-mm-dd') --전주일요일
+        AND  type = 'VISIT'
+        AND  level in (60,61,65)
+        GROUP BY provider, providerno,type
+        ) V
+    )V2
+WHERE V2.rank <=15
+union all
+-- 주차별 전체 언론사별 페이지뷰
+SELECT  V2.PAT as requestkey, V2.provider, V2.providerno, V2.visit
+FROM 
+   (SELECT V.*
+              ,CASE WHEN type = 'VISIT' THEN '0_ALL' END AS PAT
+              ,RANK() over (order by visit desc) as rank
+    FROM 
+       (SELECT provider, providerno, type, count(*) as visit
+        FROM   elasticsearch_parquet
+        WHERE 1=1
+        AND   CONCAT(year,'-',month,'-',day) >= to_char(date_trunc('week', now()- interval '7' day) ,'yyyy-mm-dd') --전주월요일
+        AND   CONCAT(year,'-',month,'-',day) <= to_char(date_trunc('week', now()- interval '7' day) + interval '6' day ,'yyyy-mm-dd') --전주일요일
+        AND  type = 'VISIT'
+        AND  requestkey !='I7uOa87k'
+        GROUP BY provider, providerno, type
+        ) V
+    )V2
+WHERE V2.rank <=15

@@ -1,0 +1,57 @@
+-- 주차별 주요퍼블리셔별 대분류별 페이지뷰
+SELECT requestkey, pcode, COUNT(*) visit
+FROM 
+    (SELECT requestkey, newcategory, substr(newcategory,1,4) as pcode
+     FROM   elasticsearch_parquet
+     WHERE 1=1
+     AND   CONCAT(year,'-',month,'-',day) >= to_char(date_trunc('week', now()- interval '7' day) ,'yyyy-mm-dd') --전주월요일
+     AND   CONCAT(year,'-',month,'-',day) <= to_char(date_trunc('week', now()- interval '7' day) + interval '6' day ,'yyyy-mm-dd') --전주일요일
+     AND  type = 'VISIT'
+     AND  requestkey IN ('G9BUz12T','X4uGJ61p','q2EdR50I','F9fzY14o') 
+    ) V
+WHERE    PCODE is not null
+GROUP BY requestkey, pcode
+union all
+SELECT  PAT as requestkey , pcode, COUNT(*) visit
+FROM 
+    (SELECT requestkey, newcategory, substr(newcategory,1,4) as pcode
+            ,CASE WHEN type = 'VISIT' THEN 'ALL' END AS PAT
+     FROM   elasticsearch_parquet
+     WHERE 1=1
+     AND   CONCAT(year,'-',month,'-',day) >= to_char(date_trunc('week', now()- interval '7' day) ,'yyyy-mm-dd') --전주월요일
+     AND   CONCAT(year,'-',month,'-',day) <= to_char(date_trunc('week', now()- interval '7' day) + interval '6' day ,'yyyy-mm-dd') --전주일요일
+     AND  type = 'VISIT'
+     AND  requestkey !='I7uOa87k'
+    ) V
+WHERE    PCODE is not null
+AND      PCODE !='Ca05'
+GROUP BY PAT, pcode
+UNION ALL
+SELECT  PAT as requestkey , pcode, COUNT(*) visit
+FROM 
+    (SELECT requestkey, newcategory, substr(newcategory,1,4) as pcode
+           ,CASE WHEN type = 'VISIT' THEN 'partners' END AS PAT
+     FROM   elasticsearch_parquet
+     WHERE 1=1
+     AND   CONCAT(year,'-',month,'-',day) >= to_char(date_trunc('week', now()- interval '7' day) ,'yyyy-mm-dd') --전주월요일
+     AND   CONCAT(year,'-',month,'-',day) <= to_char(date_trunc('week', now()- interval '7' day) + interval '6' day ,'yyyy-mm-dd') --전주일요일
+     AND  type = 'VISIT'
+     AND  level in (60,61,65)
+    ) V
+WHERE    PCODE is not null
+AND      PCODE not in ('Ca05','CA07')
+GROUP BY PAT, pcode
+UNION ALL
+SELECT PAT as requestkey, newcategory as pcode, COUNT(*) visit
+FROM 
+    (SELECT requestkey, newcategory, substr(newcategory,1,4) as pcode
+           ,CASE WHEN type = 'VISIT' THEN 'partners' END AS PAT
+     FROM   elasticsearch_parquet
+     WHERE 1=1
+     AND   CONCAT(year,'-',month,'-',day) >= to_char(date_trunc('week', now()- interval '7' day) ,'yyyy-mm-dd') --전주월요일
+     AND   CONCAT(year,'-',month,'-',day) <= to_char(date_trunc('week', now()- interval '7' day) + interval '6' day ,'yyyy-mm-dd') --전주일요일
+     AND  type = 'VISIT'
+     AND  level in (60,61,65)
+    ) V
+WHERE pcode IN ('CA05','CA07')
+GROUP BY PAT, newcategory

@@ -1,0 +1,36 @@
+-- 주차별 주요퍼블리셔별 이슈 키워드 : 주요 퍼블리셔별 상위 기사 500개 리스트  
+SELECT V2.*
+FROM 
+   (SELECT V.*
+         , RANK() over (partition by requestkey order by visit desc) as rank
+    FROM 
+       (SELECT requestkey, nid, count(*) as visit
+        FROM   elasticsearch_parquet
+        WHERE 1=1
+        AND   CONCAT(year,'-',month,'-',day) >= to_char(date_trunc('week', now()- interval '7' day) ,'yyyy-mm-dd') --전주월요일
+        AND   CONCAT(year,'-',month,'-',day) <= to_char(date_trunc('week', now()- interval '7' day) + interval '6' day ,'yyyy-mm-dd') --전주일요일
+        AND  type = 'VISIT'
+        AND  requestkey IN ('G9BUz12T','k8rlD25H','q2EdR50I','F9fzY14o') 
+        GROUP BY requestkey, nid 
+        ) V
+    )V2
+WHERE V2.rank <=500
+UNION ALL
+-- 주차별 이슈 키워드 : 상위 기사 500개 리스트  
+SELECT V2.PAT as requestkey, V2.nid, V2.visit, V2.rank
+FROM 
+   (SELECT V.*
+           ,CASE WHEN type = 'VISIT' THEN 'ALL' END AS PAT
+         , RANK() over (order by visit desc) as rank
+    FROM 
+       (SELECT nid, type, count(*) as visit
+        FROM   elasticsearch_parquet
+        WHERE 1=1
+        AND   CONCAT(year,'-',month,'-',day) >= to_char(date_trunc('week', now()- interval '7' day) ,'yyyy-mm-dd') --전주월요일
+        AND   CONCAT(year,'-',month,'-',day) <= to_char(date_trunc('week', now()- interval '7' day) + interval '6' day ,'yyyy-mm-dd') --전주일요일
+        AND  type = 'VISIT'
+        AND  requestkey !='I7uOa87k'
+        GROUP BY nid, type
+        ) V
+    )V2
+WHERE V2.rank <=500

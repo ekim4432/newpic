@@ -1,0 +1,78 @@
+-- 주차별 주요퍼블리셔별 페이지뷰, 2차클릭
+SELECT V.*, C.s_click
+FROM (
+    SELECT requestkey, concat(year,'-',month,'-',day) daily, count(distinct pcid) user, count(*) as visit
+    FROM   elasticsearch_parquet
+    WHERE 1=1
+    AND   CONCAT(year,'-',month,'-',day) >= to_char(date_trunc('week', now()- interval '7' day) ,'yyyy-mm-dd') --전주월요일
+    AND   CONCAT(year,'-',month,'-',day) <= to_char(date_trunc('week', now()- interval '7' day) + interval '6' day ,'yyyy-mm-dd') --전주일요일
+    AND  type = 'VISIT'
+    AND  requestkey IN ('G9BUz12T','X4uGJ61p','q2EdR50I','F9fzY14o') 
+    GROUP BY requestkey, concat(year,'-',month,'-',day) 
+    ) V,
+    (
+    SELECT requestkey, concat(year,'-',month,'-',day) daily , count(*) as s_click
+    FROM   elasticsearch_parquet
+    WHERE 1=1
+    AND   CONCAT(year,'-',month,'-',day) >= to_char(date_trunc('week', now()- interval '7' day) ,'yyyy-mm-dd')
+    AND   CONCAT(year,'-',month,'-',day) <= to_char(date_trunc('week', now()- interval '7' day) + interval '6' day ,'yyyy-mm-dd')
+    AND  type = 'SECOND-CLICK'
+    AND  requestkey IN ('G9BUz12T','X4uGJ61p','q2EdR50I','F9fzY14o') 
+    GROUP BY requestkey, concat(year,'-',month,'-',day) 
+    ) C
+WHERE V.daily= C.daily AND V.requestkey= C.requestkey
+UNION ALL
+-- 주차별 전체 페이지뷰, 2차클릭
+SELECT CASE WHEN V.year = '2022' THEN 'ALL' END AS requestkey 
+      ,V.daily, V.user, V.visit, C.s_click
+FROM (
+    SELECT year, concat(year,'-',month,'-',day) daily, count(distinct pcid) user, count(*) as visit
+    FROM   elasticsearch_parquet
+    WHERE 1=1
+    AND   CONCAT(year,'-',month,'-',day) >= to_char(date_trunc('week', now()- interval '7' day) ,'yyyy-mm-dd')
+    AND   CONCAT(year,'-',month,'-',day) <= to_char(date_trunc('week', now()- interval '7' day) + interval '6' day ,'yyyy-mm-dd')
+    AND  type = 'VISIT'
+    AND  requestkey !='I7uOa87k'
+    GROUP BY year,concat(year,'-',month,'-',day) 
+    ) V,
+    (
+    SELECT  year,concat(year,'-',month,'-',day) daily, count(*) as s_click
+    FROM   elasticsearch_parquet
+    WHERE 1=1
+    AND   CONCAT(year,'-',month,'-',day) >= to_char(date_trunc('week', now()- interval '7' day) ,'yyyy-mm-dd')
+    AND   CONCAT(year,'-',month,'-',day) <= to_char(date_trunc('week', now()- interval '7' day) + interval '6' day ,'yyyy-mm-dd')
+    AND  type = 'SECOND-CLICK'
+    AND  requestkey !='I7uOa87k' 
+    GROUP BY  year, concat(year,'-',month,'-',day) 
+    ) C
+WHERE 1=1
+AND   V.year= C.year
+AND   V.daily= C.daily
+UNION ALL
+-- 주차별 전체 페이지뷰, 2차클릭
+SELECT CASE WHEN V.year = '2022' THEN 'partners' END AS requestkey 
+      ,V.daily, V.user, V.visit, C.s_click
+FROM (
+    SELECT year, concat(year,'-',month,'-',day) daily, count(distinct pcid) user, count(*) as visit
+    FROM   elasticsearch_parquet
+    WHERE 1=1
+    AND   CONCAT(year,'-',month,'-',day) >= to_char(date_trunc('week', now()- interval '7' day) ,'yyyy-mm-dd')
+    AND   CONCAT(year,'-',month,'-',day) <= to_char(date_trunc('week', now()- interval '7' day) + interval '6' day ,'yyyy-mm-dd')
+    AND  type = 'VISIT'
+    AND  level in (60,61,65)
+    GROUP BY year,concat(year,'-',month,'-',day) 
+    ) V,
+    (
+    SELECT  year,concat(year,'-',month,'-',day) daily, count(*) as s_click
+    FROM   elasticsearch_parquet
+    WHERE 1=1
+    AND   CONCAT(year,'-',month,'-',day) >= to_char(date_trunc('week', now()- interval '7' day) ,'yyyy-mm-dd')
+    AND   CONCAT(year,'-',month,'-',day) <= to_char(date_trunc('week', now()- interval '7' day) + interval '6' day ,'yyyy-mm-dd')
+    AND  type = 'SECOND-CLICK'
+    AND  level in (60,61,65) 
+    GROUP BY  year, concat(year,'-',month,'-',day) 
+    ) C
+WHERE 1=1
+AND   V.year= C.year
+AND   V.daily= C.daily
+order by requestkey, daily
