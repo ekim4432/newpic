@@ -1,0 +1,51 @@
+-- 파트너스 2차페이지뷰 추이 
+SELECT CASE WHEN V.year = '2022' THEN 'partners' END AS requestkey
+          ,V.day, V.user, V.visit
+          ,C.click, SC.sec_click , REC_C.rec_click, REC_V.rec_view
+FROM (
+     SELECT  year, CONCAT(year,'-',month,'-',day) day, COUNT(distinct pcid) as user, COUNT(*) as visit
+     FROM   elasticsearch_parquet
+     WHERE  1=1
+     AND    CONCAT(year,'-',month,'-',day)>=date_format((now()- interval '3' day),'%Y-%m-%d')
+     AND    type = 'VISIT'
+     AND    level in (60,61,65)
+     GROUP BY year, CONCAT(year,'-',month,'-',day)
+     ) V,
+     (
+     SELECT year, CONCAT(year,'-',month,'-',day) day, COUNT(*) as click
+     FROM   elasticsearch_parquet
+     WHERE  1=1
+     AND    CONCAT(year,'-',month,'-',day)>=date_format((now()- interval '3' day),'%Y-%m-%d')
+     AND    type = 'CLICK'
+     AND    level in (60,61,65)
+     GROUP BY year, CONCAT(year,'-',month,'-',day)
+     ) C,
+     (
+     SELECT year, CONCAT(year,'-',month,'-',day) day, COUNT(*) as sec_click
+     FROM   elasticsearch_parquet
+     WHERE  1=1
+     AND    CONCAT(year,'-',month,'-',day)>=date_format((now()- interval '3' day),'%Y-%m-%d')
+     AND    type = 'SECOND-CLICK'
+     AND    level in (60,61,65)
+     GROUP BY year, CONCAT(year,'-',month,'-',day) 
+     ) SC,
+     (SELECT year, CONCAT(year,'-',month,'-',day) day, count(*) as rec_view
+      FROM  elasticsearch_parquet
+     WHERE  1=1
+     AND    CONCAT(year,'-',month,'-',day)>=date_format((now()- interval '3' day),'%Y-%m-%d')
+      AND  type = 'RECOMMEND-VIEW'
+      AND  level in (60,61,65)
+      GROUP BY year, CONCAT(year,'-',month,'-',day)
+      ) REC_V,
+     (SELECT year, CONCAT(year,'-',month,'-',day) day, count(*) as rec_click
+      FROM  elasticsearch_parquet
+      WHERE  1=1
+      AND    CONCAT(year,'-',month,'-',day)>=date_format((now()- interval '3' day),'%Y-%m-%d')
+      AND  type = 'RECOMMEND-CLICK'
+      AND  level in (60,61,65)
+      GROUP BY year, CONCAT(year,'-',month,'-',day)
+     ) REC_C
+WHERE 1=1
+AND   V.year= C.year AND   C.year = SC.year AND   SC.year = REC_V.year  AND   REC_V.year = REC_C.year 
+AND   V.day = C.day AND   C.day = SC.day AND   SC.day = REC_V.day AND   REC_V.day = REC_C.day
+    

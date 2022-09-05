@@ -1,0 +1,69 @@
+SELECT O.*, V.out_view				
+FROM (				
+    SELECT requestkey, concat(year,'-',month,'-',day) daily, count(*) as out_click				
+    FROM   elasticsearch_parquet				
+    WHERE 1=1				
+    AND    CONCAT(year,'-',month,'-',day)>=date_format((now()- interval '3' day),'%Y-%m-%d')				
+    AND  type = 'OUTLINK'				
+    AND  requestkey IN ('G9BUz12T','X4uGJ61p') 				
+    GROUP BY requestkey, concat(year,'-',month,'-',day) 				
+    ) O,				
+    (				
+    SELECT requestkey, concat(year,'-',month,'-',day) daily , count(*) as out_view				
+    FROM   elasticsearch_parquet				
+    WHERE 1=1				
+    AND    CONCAT(year,'-',month,'-',day)>=date_format((now()- interval '3' day),'%Y-%m-%d')				
+    AND  type = 'OUTLINK-VIEW'				
+    AND  requestkey IN ('G9BUz12T','X4uGJ61p') 				
+    GROUP BY requestkey, concat(year,'-',month,'-',day) 				
+    ) V				
+WHERE O.daily= V.daily AND O.requestkey= V.requestkey				
+UNION ALL				
+SELECT CASE WHEN O.year = '2022' THEN '0_ALL' END AS requestkey 				
+      ,O.daily, O.out_click, V.out_view				
+FROM (				
+    SELECT year, concat(year,'-',month,'-',day) daily, count(*) as out_click				
+    FROM   elasticsearch_parquet				
+    WHERE 1=1				
+    AND    CONCAT(year,'-',month,'-',day)>=date_format((now()- interval '3' day),'%Y-%m-%d')				
+    AND  type = 'OUTLINK'				
+    AND  requestkey !='I7uOa87k'				
+    GROUP BY year,concat(year,'-',month,'-',day) 				
+    ) O,				
+    (				
+    SELECT  year,concat(year,'-',month,'-',day) daily, count(*) as out_view				
+    FROM   elasticsearch_parquet				
+    WHERE 1=1				
+    AND    CONCAT(year,'-',month,'-',day)>=date_format((now()- interval '3' day),'%Y-%m-%d')				
+    AND  type = 'OUTLINK-VIEW'				
+    AND  requestkey !='I7uOa87k' 				
+    GROUP BY  year, concat(year,'-',month,'-',day) 				
+    ) V				
+WHERE 1=1				
+AND   O.year= V.year				
+AND   O.daily= V.daily  				
+UNION ALL				
+SELECT CASE WHEN O.year = '2022' THEN '1_partners' END AS requestkey 				
+      ,O.daily, O.out_click, V.out_view				
+FROM (				
+    SELECT year, concat(year,'-',month,'-',day) daily, count(*) as out_click				
+    FROM   elasticsearch_parquet				
+    WHERE 1=1				
+    AND    CONCAT(year,'-',month,'-',day)>=date_format((now()- interval '3' day),'%Y-%m-%d')				
+    AND  type = 'OUTLINK'				
+    AND  level in (60,61,65)				
+    GROUP BY year,concat(year,'-',month,'-',day) 				
+    ) O,				
+    (				
+    SELECT  year,concat(year,'-',month,'-',day) daily, count(*) as out_view				
+    FROM   elasticsearch_parquet				
+    WHERE 1=1				
+    AND    CONCAT(year,'-',month,'-',day)>=date_format((now()- interval '3' day),'%Y-%m-%d')				
+    AND  type = 'OUTLINK-VIEW'				
+    AND  level in (60,61,65) 				
+    GROUP BY  year, concat(year,'-',month,'-',day) 				
+    ) V				
+WHERE 1=1				
+AND   O.year= V.year				
+AND   O.daily= V.daily				
+order by requestkey, daily				
