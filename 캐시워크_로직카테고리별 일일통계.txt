@@ -1,0 +1,46 @@
+-- 로직별 카테고리별 일일통계
+WITH STAT AS 
+(
+SELECT VIS.day, VIS.requestkey, VIS.rssoption, VIS.newcategory, VIS.pcode
+           , CASE WHEN VIS.rssoption ='RECOM_RTI'   THEN '1_실시간이슈'
+                  WHEN VIS.rssoption ='RECOM_K_RTI' THEN '2_실시간이슈(열독률)'
+                  WHEN VIS.rssoption ='RECOM_FCC'   THEN '3_언론사&카테고리'
+                  WHEN VIS.rssoption ='RECOM_CRANK' THEN '4_카테고리별 인기'          
+                  WHEN VIS.rssoption ='RECOM_CTR'   THEN '5_CTR'       
+                  WHEN VIS.rssoption ='RECOM_EMOJI' THEN '6_댓글감정표현'    
+                  WHEN VIS.rssoption ='RECOM_RANK'  THEN '7_인기순'    
+                  WHEN VIS.rssoption ='RECOM_NMEDIA'THEN '8_뉴미디어'    
+                  WHEN VIS.rssoption ='RECOM_DATE'  THEN '9_날짜'  END AS LOGI_NAME
+           , CASE WHEN VIS.pcode ='CA01' THEN '1_뉴스'
+                  WHEN VIS.pcode ='CA02' THEN '2_생활문화'
+                  WHEN VIS.pcode ='CA03' THEN '3_연예'
+                  WHEN VIS.pcode ='CA04' THEN '4_스포츠'          
+                  WHEN VIS.pcode ='CA05' THEN '5_뉴미디어'       
+                  WHEN VIS.pcode ='CA06' THEN '6_동영상'    
+                  WHEN VIS.pcode ='CA09' THEN '7_금융'END AS CODE_NAME, VIS.visit, VIS.user, RSS.nid
+FROM(SELECT CONCAT(year,'-',month,'-',day) day, requestkey, rssoption, newcategory, substr(newcategory,1,4) as pcode, count(*) as visit, count(distinct pcid) as user
+         FROM   elasticsearch_parquet
+         WHERE  1=1
+         AND   CONCAT(year,'-',month,'-',day)>=date_format((now()- interval '3' day),'%Y-%m-%d')
+         AND    type = 'VISIT'
+         AND    requestkey in ('G9BUz12T')
+         GROUP BY CONCAT(year,'-',month,'-',day), requestkey, rssoption, newcategory, substr(newcategory,1,4)
+        ) VIS,
+       (SELECT CONCAT(year,'-',month,'-',day) day, requestkey, rssoption, newcategory, substr(newcategory,1,4) as pcode, count(*) as nid
+        FROM   elasticsearch_parquet
+         WHERE  1=1
+         AND   CONCAT(year,'-',month,'-',day)>=date_format((now()- interval '3' day),'%Y-%m-%d')
+        AND    type = 'RSS'
+        AND    requestkey in ('G9BUz12T')
+        GROUP BY CONCAT(year,'-',month,'-',day), requestkey, rssoption, newcategory, substr(newcategory,1,4)
+       ) RSS
+WHERE VIS.day= RSS.day
+AND   VIS.requestkey= RSS.requestkey
+AND   VIS.rssoption = RSS.rssoption
+AND   VIS.newcategory = RSS.newcategory
+AND   VIS.pcode = RSS.pcode
+ORDER BY VIS.day, VIS.requestkey, VIS.rssoption
+)
+SELECT S.*, N.code_name
+FROM  STAT S , news_cate N
+WHERE S.NEWCATEGORY = CODE
