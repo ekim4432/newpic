@@ -1,0 +1,31 @@
+SELECT VIS.day, VIS.requestkey,  VIS.pcode, NC.code_name, PN.author, PN.title, VIS.nid, VIS.visit
+FROM (SELECT V2.day,  V2.requestkey, V2.pcode, V2.nid, V2.visit
+      FROM (SELECT V.*
+            , RANK() over (partition by requestkey, pcode order by visit desc) as rank
+             FROM  (SELECT day, requestkey, substr(newcategory,1,4) pcode, nid, count(*) as visit
+                    FROM   elasticsearch_parquet
+                    WHERE 1=1
+                    AND  CONCAT(year,'-',month,'-',day)=date_format((now()- interval '3' day),'%Y-%m-%d')
+                    AND  type = 'VISIT'
+                    AND    requestkey in ('G9BUz12T', 'X4uGJ61p')
+                    GROUP BY day, requestkey, substr(newcategory,1,4), nid 
+                    ) V
+             )V2
+         WHERE V2.rank <=5
+        ) VIS,
+         (SELECT date_format(from_unixtime(regdate/1000) at time zone 'Asia/Seoul','%Y-%m-%d') date, nid, title, author
+          FROM   picnews
+          WHERE  1=1
+          AND   date_format(from_unixtime(regdate/1000) at time zone 'Asia/Seoul','%Y-%m-%d') >= date_format((now()- interval '5' day),'%Y-%m-%d')
+         ) PN,
+        (SELECT nid, category
+         FROM  contents_info
+         ) CI,
+         (SELECT code, code_name
+          FROM   news_cate
+         ) Nc
+WHERE 1=1
+AND   VIS.nid = PN.nid
+AND   PN.nid  = CI.nid
+AND   CI.category = NC.code
+ORDER BY  VIS.day, VIS.requestkey, VIS.pcode, VIS.visit desc

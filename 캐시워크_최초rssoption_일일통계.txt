@@ -1,0 +1,49 @@
+-- 캐시워크 인기기사 최초 rssoption  
+SELECT RSS.day,  RSS.requestkey, NC.code_name, RSS.provider, PN.title, RSS.nid
+     , CASE WHEN RSS.rssoption ='RECOM_RTI'   THEN '실시간이슈'
+            WHEN RSS.rssoption ='RECOM_K_RTI' THEN '실시간이슈(열독률)'
+            WHEN RSS.rssoption ='RECOM_FCC'   THEN '언론사&카테고리'
+            WHEN RSS.rssoption ='RECOM_CRANK' THEN '카테고리별 인기'          
+            WHEN RSS.rssoption ='RECOM_CTR'   THEN 'CTR'       
+            WHEN RSS.rssoption ='RECOM_EMOJI' THEN '댓글감정표현'    
+            WHEN RSS.rssoption ='RECOM_RANK'  THEN '인기순'    
+            WHEN RSS.rssoption ='RECOM_NMEDIA'THEN '뉴미디어'    
+            WHEN RSS.rssoption ='RECOM_DATE'  THEN '날짜'  END AS LOGI_NAME, VIS.visit
+FROM (SELECT V2.day ,V2.requestkey, V2.nid, V2.visit
+          FROM (SELECT V.*
+                   , RANK() over (partition by requestkey order by visit desc) as rank
+                    FROM  (SELECT day, requestkey, nid, count(*) as visit
+                               FROM   elasticsearch_parquet
+                               WHERE 1=1
+                               AND  CONCAT(year,'-',month,'-',day)>=date_format((now()- interval '1' day),'%Y-%m-%d')
+                               AND  type = 'VISIT'
+                               AND  requestkey IN ('G9BUz12T') 
+                               GROUP BY day, requestkey, nid ) V
+                               )V2
+          WHERE V2.rank <=5
+          ) VIS,
+         (SELECT insertdate, day, requestkey, newcategory, provider, nid, rssoption
+                    , RANK() over (partition by requestkey, nid order by insertdate) as ord
+          FROM   elasticsearch_parquet
+          WHERE 1=1
+          AND   CONCAT(year,'-',month,'-',day)>=date_format((now()- interval '1' day),'%Y-%m-%d')
+          AND   type = 'RSS'
+          AND   rssoption !='NONE'
+          AND   requestkey IN ('G9BUz12T')
+          ) RSS,
+         (SELECT date_format(from_unixtime(regdate/1000) at time zone 'Asia/Seoul','%Y-%m-%d') date, nid, title
+          FROM   picnews
+          WHERE  1=1
+          AND   date_format(from_unixtime(regdate/1000) at time zone 'Asia/Seoul','%Y-%m-%d') >= date_format((now()- interval '5' day),'%Y-%m-%d')
+         ) PN,
+         (SELECT code, code_name
+          FROM   news_Cate
+         ) NC
+WHERE 1=1
+AND   VIS.day = RSS.day
+AND   VIS.requestkey = RSS.requestkey
+AND   VIS.nid = RSS.nid
+AND   VIS.nid = PN.nid
+AND   RSS.newcategory = NC.code
+AND   RSS.ord =1 --제외조건
+order by VIS.day, VIS.requestkey,VIS.visit desc
