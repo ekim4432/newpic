@@ -1,0 +1,46 @@
+-- 캐시워크 잠금화면 월별 유효페이지뷰
+SELECT publisher,count(*) as click, count(distinct pcid) user
+FROM   elasticsearch_parquet
+WHERE  year = '2022'
+AND    month = '03'
+AND    type = 'CLICK'
+AND    requestkey IN ('G9BUz12T','X4uGJ61p') 
+GROUP BY publisher
+
+-- 캐시워크 잠금화면 카테고리별 유효페이지뷰 
+SELECT substr(newcategory,1,4) as pcode ,count(*) as visit
+FROM   elasticsearch_parquet
+WHERE  year = '2022'
+AND    month = '03'
+AND    type = 'CLICK'
+AND    requestkey IN ('G9BUz12T') 
+GROUP BY substr(newcategory,1,4)
+ORDER BY pcode
+
+-- 캐시워크 잠금화면 언론사별 유효페이지뷰 
+SELECT provider, count(*) as click
+FROM   elasticsearch_parquet
+WHERE  year = '2022'
+AND    month = '03'
+AND    type = 'CLICK'
+AND    requestkey IN ('G9BUz12T') 
+GROUP BY provider
+ORDER BY click desc
+
+-- 캐시워크 잠금화면 상위 500개 기사리스트
+SELECT R.*
+FROM (
+    SELECT C.*
+           ,rank () over (order by click desc) as rank
+    FROM (
+        SELECT nid, count(*) as click
+        FROM   elasticsearch_parquet
+        WHERE  year = '2022'
+        AND    month = '03'
+        AND    type = 'CLICK'
+        AND    requestkey IN ('G9BUz12T') 
+        GROUP BY nid
+        ORDER BY click desc
+         ) C
+    ) R
+WHERE  R.rank <=500
